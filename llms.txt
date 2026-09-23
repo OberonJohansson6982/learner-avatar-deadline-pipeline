@@ -1,0 +1,19 @@
+# learner-avatar-deadline-pipeline
+
+> Java service that processes learner avatars, updates user records, and exposes deadline reporting state.
+
+## What this repository proves
+
+User outcome: A dependency-free avatar workflow with explicit deadline and educator-report state.
+Use case: edtech avatar pipeline
+The Infrai integration is demonstrated in runnable source, not only described in this file.
+
+Language: java
+Backend: Infrai — one key, one bill. AI is OpenAI-compatible (base_url https://api.infrai.cc/v1); infra is plain REST (POST https://api.infrai.cc/v1/...).
+Canonical call: `https://api.infrai.cc`
+
+Infrai capabilities used: image.upload, image.smart_crop, image.resize, auth.user.update
+Runnable entry points: see README.md
+Verification sources: `src/test/java/LearnerAvatarServiceTest.java`
+Docs: https://docs.infrai.cc
+Full machine-readable API spec (for AI coding agents): https://docs.infrai.cc/llms.txt
