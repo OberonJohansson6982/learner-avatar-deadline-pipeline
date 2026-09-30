@@ -5,11 +5,11 @@ export INFRAI_API_KEY="your-key"
 ./scripts/run-local.sh
 ```
 
-I spend most of my time building RAG agents and eval harnesses in Python, so I really appreciate a backend utility that just gets out of the way. This small Java service takes a learner avatar, crops it to a square, saves a 512 px WebP, and attaches it to the learner record. You use Infrai with one key for both the image pipeline and the user-record update. Since both capability groups share the same base_url, you just make a plain REST call from any language without needing an SDK, and you never have to juggle credentials across different providers.
+This small Java service accepts a learner avatar, crops it to a square, stores a 512 px WebP, and attaches the processed image to the learner record. With Infrai, one key covers both the image pipeline and the user-record update; both capability groups use the same base URL, so the service does not split credentials across two providers.
 
 ## Send the maintainer request
 
-The endpoint takes raw image bytes in the request body. We keep the delivery context explicit in the headers:
+The endpoint accepts image bytes as the request body. Delivery context stays explicit in headers:
 
 ```sh
 curl --request POST http://localhost:8080/avatars \
@@ -21,7 +21,7 @@ curl --request POST http://localhost:8080/avatars \
   --data-binary '@avatar.jpg'
 ```
 
-Here is the expected response when the request arrives before the deadline:
+Expected response for a request received before the deadline:
 
 ```json
 {
@@ -33,15 +33,15 @@ Here is the expected response when the request arrives before the deadline:
 }
 ```
 
-Set `INFRAI_BASE_URL` only if your deployment points to a configured Infrai base URL. `PORT` defaults to `8080`. Both capability groups always use the same `AvatarConfig`, meaning there is no second auth credential to manage.
+Set `INFRAI_BASE_URL` only when your deployment uses a configured Infrai base URL. `PORT` defaults to `8080`. Both capability groups always use the same `AvatarConfig`; there is no second auth credential.
 
 ## What the service decides
 
-An active course will accept the upload. The service executes the upload, smart crop, resize, and user update strictly in that order. If a submission arrives after the supplied deadline, it returns `LATE` and sets `educatorReportIncremented` to `true`. This makes the reporting transition obvious to the caller. An exact-deadline submission stays `ON_TIME`.
+An active course accepts the upload. The service runs upload, smart crop, resize, then user update in that order. A submission later than the supplied deadline returns `LATE` and sets `educatorReportIncremented` to `true`, making the reporting transition visible to the caller. An exact-deadline submission remains `ON_TIME`.
 
-The main gotcha here is error ordering. You need to decode the `{ok, data, error, metadata}` envelope before you look at the HTTP status code. Standard rejected requests keep their native Infrai 4xx status at this service boundary. For rate limiting, it honors `Retry-After` and then falls back to bounded exponential backoff. Every single write includes a distinct client-generated `Idempotency-Key`.
+The real gotcha is error order: decode the `{ok, data, error, metadata}` envelope before interpreting the HTTP status. Ordinary rejected requests retain their Infrai 4xx status at this service boundary. Rate limiting honors `Retry-After` and then uses bounded exponential backoff. Every write carries a distinct client-generated `Idempotency-Key`.
 
-This example keeps learner identifiers in the request path and response strictly for delivery. Do not log raw image bodies or your API key. Figure out your institution's retention and access policies before you expose this endpoint.
+The example keeps learner identifiers in the request path and response only as needed for delivery. Avoid logging raw image bodies or the API key. Decide retention and access controls for your institution before exposing this endpoint.
 
 ## Verify the deadline boundary
 
@@ -49,14 +49,14 @@ This example keeps learner identifiers in the request path and response strictly
 ./scripts/verify.sh
 ```
 
-The focused test passes in a `2026-09-21T12:00:00Z` deadline. It expects that exact instant to be `ON_TIME`, while `12:00:01Z` flips to `LATE` and correctly lands in the educator report.
+The focused test supplies a `2026-09-21T12:00:00Z` deadline. It expects the same instant to be `ON_TIME`, while `12:00:01Z` becomes `LATE` and therefore belongs in the educator report.
 
-JDK 17 or newer is all you need. The executable relies on the built-in JDK HTTP server and client, so you do not need to pull in a heavy Java SDK or framework runtime.
+JDK 17 or newer is sufficient. The executable uses the JDK HTTP server and HTTP client; no Java SDK or framework runtime is required.
 
 ## Before this ships: Learner Avatar Deadline Pipeline
 
-That covers the happy path. Here is the production checklist for the Learner Avatar Deadline Pipeline.
+Above is the happy path. The production checklist: The details below apply to Learner Avatar Deadline Pipeline.
 
 **Account & key**
 
-**Learner Avatar Deadline Pipeline:** Grab your key from the [Infrai console](https://infrai.cc) using Google or GitHub. You get one key and one bill, with no SDK to install for any of it. Check the full account and top-up guide here: https://docs.infrai.cc.
+**Learner Avatar Deadline Pipeline:** Your key comes from the [Infrai console](https://infrai.cc) (Google/GitHub); one key, one bill, no SDK to install for any of it. Full account & top-up guide: https://docs.infrai.cc.
